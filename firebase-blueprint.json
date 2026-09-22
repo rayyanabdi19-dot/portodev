@@ -1,0 +1,84 @@
+{
+  "entities": {
+    "Message": {
+      "title": "Message",
+      "description": "Visitor contact message sent via the portfolio contact form",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "subject": { "type": "string", "maxLength": 200 },
+        "message": { "type": "string", "maxLength": 3000 },
+        "status": { "type": "string", "enum": ["unread", "read"] },
+        "created_at": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["name", "email", "message"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Showcase portfolio project",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "title": { "type": "string", "maxLength": 150 },
+        "slug": { "type": "string", "maxLength": 150 },
+        "category": { "type": "string", "maxLength": 100 },
+        "short_description": { "type": "string", "maxLength": 500 },
+        "full_description": { "type": "string", "maxLength": 5000 },
+        "thumbnail": { "type": "string", "maxLength": 500 },
+        "demo_url": { "type": "string", "maxLength": 500 },
+        "github_url": { "type": "string", "maxLength": 500 },
+        "featured": { "type": "boolean" },
+        "order": { "type": "number" }
+      },
+      "required": ["title", "short_description"]
+    },
+    "Profile": {
+      "title": "Profile",
+      "description": "Public personal and contact information of the portfolio owner",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 120 },
+        "headline": { "type": "string", "maxLength": 200 },
+        "bio": { "type": "string", "maxLength": 3000 },
+        "photo": { "type": "string", "maxLength": 500 },
+        "email": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "location": { "type": "string", "maxLength": 150 },
+        "available_for_hire": { "type": "boolean" }
+      },
+      "required": ["name", "headline", "email"]
+    },
+    "Analytics": {
+      "title": "Analytics",
+      "description": "Website view counters and CV download metrics",
+      "type": "object",
+      "properties": {
+        "views_count": { "type": "number" },
+        "downloads_count": { "type": "number" },
+        "last_updated": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["views_count", "downloads_count"]
+    }
+  },
+  "firestore": {
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Contact form submissions from prospective clients or recruiters"
+    },
+    "/projects/{projectId}": {
+      "schema": "Project",
+      "description": "Delv Andriawan portfolio projects collection"
+    },
+    "/portfolio/{docId}": {
+      "schema": "Profile",
+      "description": "Portfolio configuration and master settings document"
+    },
+    "/analytics/{docId}": {
+      "schema": "Analytics",
+      "description": "Site engagement and interaction counters"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Delv Andriawan Portfolio",
+  "description": "Aplikasi portofolio pribadi dan sistem CV builder profesional Delv Andriawan dengan fitur Full CRUD, ATS templates, dan Admin Dashboard.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
