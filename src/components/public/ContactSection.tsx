@@ -41,11 +41,9 @@ export const ContactSection: React.FC = () => {
     }
   };
 
-  const handleWhatsApp = () => {
-    const text = encodeURIComponent('Halo Delv Andriawan, saya melihat portofolio Anda dan ingin berdiskusi tentang sebuah projek.');
-    const waUrl = profile?.whatsapp || `https://wa.me/6281234567890?text=${text}`;
-    window.open(waUrl.includes('?') ? waUrl : `${waUrl}?text=${text}`, '_blank');
-  };
+  const waText = encodeURIComponent('Halo Delv Andriawan, saya melihat portofolio Anda dan ingin berdiskusi tentang sebuah projek.');
+  const waBaseUrl = profile?.whatsapp || 'https://wa.me/6281234567890';
+  const fullWaUrl = waBaseUrl.includes('?') ? `${waBaseUrl}&text=${waText}` : `${waBaseUrl}?text=${waText}`;
 
   return (
     <section id="kontak" className="py-24 bg-white">
@@ -63,13 +61,15 @@ export const ContactSection: React.FC = () => {
 
           {/* Quick Direct Action Buttons */}
           <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-            <button
-              onClick={handleWhatsApp}
+            <a
+              href={fullWaUrl}
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md shadow-emerald-600/25 transition-all transform hover:-translate-y-0.5"
             >
               <MessageCircle className="w-5 h-5" />
               <span>Hubungi via WhatsApp</span>
-            </button>
+            </a>
 
             <a
               href={`mailto:${profile?.email || 'delv.andriawan@gmail.com'}`}

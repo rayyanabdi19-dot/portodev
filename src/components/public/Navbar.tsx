@@ -68,7 +68,7 @@ export const Navbar: React.FC = () => {
                 Delv Andriawan
               </span>
               <span className="text-[11px] font-medium text-orange-600 block tracking-wider uppercase">
-                Fullstack Developer
+                {data?.profile?.title || 'Freelancer'}
               </span>
             </div>
           </a>

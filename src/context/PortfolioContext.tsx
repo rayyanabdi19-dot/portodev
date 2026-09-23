@@ -31,7 +31,8 @@ export interface LoginStepResult {
   tempSessionId?: string;
   email?: string;
   message?: string;
-  otpPreview?: string;
+  smtpConfigured?: boolean;
+  fallbackCode?: string;
 }
 
 interface PortfolioContextType {
@@ -46,7 +47,8 @@ interface PortfolioContextType {
   removeToast: (id: string) => void;
   login: (email: string, password: string) => Promise<LoginStepResult>;
   verifyOtp: (tempSessionId: string, code: string) => Promise<boolean>;
-  resendOtp: (tempSessionId: string) => Promise<string | null>;
+  resendOtp: (tempSessionId: string) => Promise<{ success: boolean; fallbackCode?: string; smtpConfigured?: boolean }>;
+  configureSmtp: (data: { user: string; pass: string; host?: string; port?: number; secure?: boolean; tempSessionId?: string }) => Promise<{ success: boolean; message: string; emailSent?: boolean }>;
   loginGoogle: () => Promise<boolean>;
   resetPassword: (email: string) => Promise<boolean>;
   logout: () => void;
@@ -218,14 +220,19 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       const result = await res.json();
 
       if (result.success && result.requireOtp) {
-        showToast('info', `Kode autentikasi 6-digit telah dikirim ke email: ${result.email || cleanEmail}`);
+        if (result.smtpConfigured) {
+          showToast('info', `Kode autentikasi 6-digit telah dikirim ke email: ${result.email || cleanEmail}`);
+        } else {
+          showToast('info', `Pemberitahuan: Server SMTP belum aktif. Gunakan kode darurat atau hubungkan email.`);
+        }
         return {
           success: true,
           requireOtp: true,
           tempSessionId: result.tempSessionId,
           email: result.email || cleanEmail,
           message: result.message,
-          otpPreview: result.otpPreview,
+          smtpConfigured: result.smtpConfigured,
+          fallbackCode: result.fallbackCode,
         };
       }
 
@@ -302,7 +309,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   };
 
-  const resendOtp = async (tempSessionId: string): Promise<string | null> => {
+  const resendOtp = async (tempSessionId: string): Promise<{ success: boolean; fallbackCode?: string; smtpConfigured?: boolean }> => {
     try {
       const res = await fetch('/api/auth/resend-otp', {
         method: 'POST',
@@ -311,16 +318,53 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       });
       const result = await res.json();
       if (result.success) {
-        showToast('info', '✓ Kode autentikasi baru telah dikirimkan ke email Anda.');
-        return result.otpPreview || null;
+        if (result.smtpConfigured) {
+          showToast('info', '✓ Kode autentikasi baru telah dikirimkan ke email terdaftar Anda.');
+        } else {
+          showToast('info', 'Pemberitahuan: Server SMTP belum aktif. Gunakan kode darurat sementara.');
+        }
+        return {
+          success: true,
+          fallbackCode: result.fallbackCode,
+          smtpConfigured: result.smtpConfigured,
+        };
       } else {
         showToast('error', result.message || 'Gagal mengirim ulang kode autentikasi.');
-        return null;
+        return { success: false };
       }
     } catch (err) {
       console.error('Resend OTP error:', err);
       showToast('error', 'Koneksi jaringan terputus saat meminta kode baru.');
-      return null;
+      return { success: false };
+    }
+  };
+
+  const configureSmtp = async (config: {
+    user: string;
+    pass: string;
+    host?: string;
+    port?: number;
+    secure?: boolean;
+    tempSessionId?: string;
+  }): Promise<{ success: boolean; message: string; emailSent?: boolean }> => {
+    try {
+      const res = await fetch('/api/auth/configure-smtp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      const result = await res.json();
+      if (result.success) {
+        showToast('success', result.message);
+        return { success: true, message: result.message, emailSent: result.emailSent };
+      } else {
+        showToast('error', result.message || 'Gagal menyimpan konfigurasi SMTP.');
+        return { success: false, message: result.message };
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Gagal menghubungi server.';
+      showToast('error', msg);
+      return { success: false, message: msg };
     }
   };
 
@@ -982,6 +1026,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         login,
         verifyOtp,
         resendOtp,
+        configureSmtp,
         loginGoogle,
         resetPassword,
         logout,

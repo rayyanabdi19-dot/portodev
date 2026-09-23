@@ -206,7 +206,7 @@ export const AdminExperience: React.FC = () => {
                 required
                 value={position}
                 onChange={(e) => setPosition(e.target.value)}
-                placeholder="Contoh: Senior Fullstack Developer"
+                placeholder="Contoh: Freelance Web Developer"
                 className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-hidden focus:border-orange-500 focus:bg-white"
               />
             </div>

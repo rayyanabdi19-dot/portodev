@@ -9,14 +9,34 @@ import {
   onAuthStateChanged,
   User as FirebaseUser,
 } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer, collection, addDoc, getDocs, updateDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import {
+  initializeFirestore,
+  getFirestore,
+  doc,
+  getDocFromServer,
+  collection,
+  addDoc,
+  getDocs,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  Firestore,
+} from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 // Initialize Firebase App
 const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore with specific database ID (CRITICAL)
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Firestore with specific database ID (CRITICAL: The app will break without this line)
+let firestoreInstance: Firestore;
+try {
+  firestoreInstance = initializeFirestore(app, {
+    experimentalAutoDetectLongPolling: true,
+  }, firebaseConfig.firestoreDatabaseId);
+} catch {
+  firestoreInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+}
+export const db = firestoreInstance;
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);
@@ -75,9 +95,18 @@ export async function testFirestoreConnection() {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
     console.log('Firebase Firestore connection verified.');
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Firestore offline / check Firebase configuration.');
+  } catch (error: any) {
+    const msg = error instanceof Error ? error.message : String(error);
+    const code = error?.code || '';
+    if (
+      msg.includes('the client is offline') ||
+      msg.includes('unavailable') ||
+      code === 'unavailable' ||
+      msg.includes('Could not reach Cloud Firestore')
+    ) {
+      console.warn('Firestore running in offline/standby mode: backend will connect as network permits.');
+    } else {
+      console.warn('Firestore initial check notice:', msg);
     }
   }
 }

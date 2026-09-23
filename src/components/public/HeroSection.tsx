@@ -29,11 +29,11 @@ export const HeroSection: React.FC = () => {
             </h1>
             <div className="mt-3 flex items-center justify-center lg:justify-start gap-2.5">
               <span className="text-xl sm:text-2xl font-bold text-orange-600">
-                {profile?.title || 'Fullstack Developer'}
+                {profile?.title || 'Freelancer'}
               </span>
               <span className="text-slate-300">/</span>
               <span className="text-xs font-mono font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200">
-                Code Artisan
+                Professional
               </span>
             </div>
 
@@ -139,7 +139,7 @@ export const HeroSection: React.FC = () => {
                   <div className="absolute inset-0 bg-linear-to-t from-slate-950/80 via-transparent to-transparent" />
                   <div className="absolute bottom-4 left-4 right-4 text-white">
                     <p className="text-xs font-mono text-orange-400">// Ready to collaborate</p>
-                    <p className="text-sm font-bold tracking-tight">Fullstack Architect & UI Developer</p>
+                    <p className="text-sm font-bold tracking-tight">Freelancer & Web Solution Specialist</p>
                   </div>
                 </div>
 

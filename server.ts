@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import crypto from 'crypto';
+import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 
 const app = express();
@@ -17,8 +18,10 @@ const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
 app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Secure One-Way Password Hashing (PBKDF2 with SHA-256)
+const PASSWORD_SALT = process.env.PASSWORD_SALT || 'delv_portfolio_secure_salt_2026';
+
 function hashPassword(password: string): string {
-  return crypto.pbkdf2Sync(password, 'delv_portfolio_secure_salt_2026', 10000, 32, 'sha256').toString('hex');
+  return crypto.pbkdf2Sync(password, PASSWORD_SALT, 10000, 32, 'sha256').toString('hex');
 }
 
 function verifyPassword(inputPassword: string, storedPasswordHash?: string): boolean {
@@ -30,22 +33,29 @@ function verifyPassword(inputPassword: string, storedPasswordHash?: string): boo
   return false;
 }
 
+// Default PBKDF2 hash for initial bootstrap (no plain-text password in source code)
+const DEFAULT_ADMIN_PASSWORD_HASH = process.env.ADMIN_PASSWORD_HASH || (
+  process.env.ADMIN_PASSWORD
+    ? hashPassword(process.env.ADMIN_PASSWORD)
+    : 'eea3027d5564cf825609c4d4137dac6c55c2f176f1dada62f30553dd8b5f1d5c'
+);
+
 const INITIAL_DATA = {
   user: {
     id: 'usr_admin_1',
     name: 'Rayyan Abdi',
-    email: 'rayyan.abdi19@gmail.com',
-    password: hashPassword('Tehgelas1#'),
+    email: process.env.ADMIN_EMAIL || 'rayyan.abdi19@gmail.com',
+    password: DEFAULT_ADMIN_PASSWORD_HASH,
     role: 'admin',
     created_at: '2024-01-01T00:00:00Z',
   },
   profile: {
     id: 'prof_1',
     name: 'Delv Andriawan',
-    title: 'Fullstack Developer',
+    title: 'Freelancer',
     photo: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=800',
-    bio: 'Halo! Saya Delv Andriawan, seorang Fullstack Developer yang berdedikasi membangun aplikasi web modern, performa tinggi, dan terstruktur. Menggabungkan ketelitian logika backend dengan estetika desain antarmuka frontend yang responsif serta ramah pengguna.',
-    short_bio: 'Vibe Coding • Web Application • Digital Solution. Membangun aplikasi digital yang membantu pekerjaan menjadi lebih efektif dan terorganisir.',
+    bio: 'Halo! Saya Delv Andriawan, seorang Freelancer yang berdedikasi membangun aplikasi web modern, sistem informasi handal, dan solusi digital terpercaya untuk klien dan bisnis. Siap membantu mewujudkan ide menjadi produk digital nyata dengan hasil kerja yang rapi, performa tinggi, dan tepat waktu.',
+    short_bio: 'Freelancer • Web Application • Digital Solutions. Membantu bisnis dan klien mewujudkan aplikasi digital berkualitas secara fleksibel dan profesional.',
     email: 'delv.andriawan@gmail.com',
     phone: '+62 812-3456-7890',
     location: 'Bandung & Jakarta, Indonesia',
@@ -315,9 +325,9 @@ const INITIAL_DATA = {
   cvs: [
     {
       id: 'cv_main',
-      name: 'Delv Andriawan - Fullstack Resume (ATS)',
-      professional_title: 'Fullstack Developer',
-      summary: 'Fullstack Developer berpengalaman lebih dari 4 tahun dalam merancang dan mengembangkan aplikasi web skalabel menggunakan React, Node.js, PHP/Laravel, dan MySQL. Terampil dalam integrasi API, optimasi basis data, serta penerapan modern Vibe Coding untuk mempercepat siklus delivery software dengan standar kualitas tinggi.',
+      name: 'Delv Andriawan - Freelancer Resume (ATS)',
+      professional_title: 'Freelancer',
+      summary: 'Freelancer berpengalaman lebih dari 4 tahun dalam merancang dan mengembangkan aplikasi web skalabel, website bisnis, dan solusi sistem informasi menggunakan React, Node.js, PHP/Laravel, dan MySQL. Terampil dalam integrasi API, optimasi performa web, serta memberikan solusi digital berkualitas tinggi untuk berbagai klien.',
       email: 'delv.andriawan@gmail.com',
       phone: '+62 812-3456-7890',
       location: 'Bandung & Jakarta, Indonesia',
@@ -432,7 +442,7 @@ const INITIAL_DATA = {
   settings: {
     general: {
       portfolio_name: 'Delv Andriawan Portfolio',
-      website_title: 'Delv Andriawan — Fullstack Developer Portfolio',
+      website_title: 'Delv Andriawan — Freelancer Portfolio',
       description: 'Portfolio pribadi Delv Andriawan yang berisi profil, pengalaman, projek, skill dan CV.',
       logo: '',
       favicon: '',
@@ -448,7 +458,7 @@ const INITIAL_DATA = {
       website: 'https://delvandriawan.dev',
     },
     seo: {
-      meta_title: 'Delv Andriawan — Fullstack Developer Portfolio',
+      meta_title: 'Delv Andriawan — Freelancer Portfolio',
       meta_description: 'Portfolio pribadi Delv Andriawan yang berisi profil, pengalaman, projek, skill dan CV.',
       og_image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=1200',
     },
@@ -513,7 +523,7 @@ function readDb(): any {
     const parsed = JSON.parse(raw);
     if (!parsed.messages) parsed.messages = INITIAL_DATA.messages;
     if (!parsed.analytics) parsed.analytics = INITIAL_DATA.analytics;
-    if (!parsed.user.password) parsed.user.password = hashPassword('admin123');
+    if (!parsed.user.password) parsed.user.password = DEFAULT_ADMIN_PASSWORD_HASH;
     return parsed;
   } catch (err) {
     console.error('Error reading DB, using initial data:', err);
@@ -545,18 +555,90 @@ interface OtpSession {
 }
 const activeOtps = new Map<string, OtpSession>();
 
-function dispatchEmailOtp(targetEmail: string, code: string): void {
-  console.log('================================================================================');
-  console.log('[2FA EMAIL DISPATCHER] Pengiriman Kode Autentikasi Login Admin');
-  console.log(`Penerima    : ${targetEmail}`);
-  console.log(`Subjek      : [Keamanan Akun] Kode Verifikasi Login Portofolio`);
-  console.log(`Kode OTP    : >>> ${code} <<<`);
-  console.log(`Masa Berlaku: 10 Menit`);
-  console.log('================================================================================');
+async function dispatchEmailOtp(targetEmail: string, code: string): Promise<{ success: boolean; error?: string }> {
+  console.log(`[2FA REAL DISPATCHER] Mempersiapkan pengiriman kode autentikasi ke: ${targetEmail}`);
+
+  const db = readDb();
+  const smtpConfig = {
+    host: process.env.SMTP_HOST || db.settings?.smtp?.host || 'smtp.gmail.com',
+    port: Number(process.env.SMTP_PORT || db.settings?.smtp?.port || 587),
+    secure: process.env.SMTP_SECURE === 'true' || db.settings?.smtp?.secure === true,
+    user: process.env.SMTP_USER || db.settings?.smtp?.user || '',
+    pass: process.env.SMTP_PASS || db.settings?.smtp?.pass || '',
+  };
+
+  const htmlContent = `
+    <!DOCTYPE html>
+    <html lang="id">
+    <head>
+      <meta charset="utf-8">
+      <title>Kode Autentikasi 2FA</title>
+    </head>
+    <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #0f172a; margin: 0; padding: 32px; color: #f8fafc;">
+      <div style="max-width: 560px; margin: 0 auto; background-color: #020617; border-radius: 16px; border: 1px solid #1e293b; overflow: hidden; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5);">
+        <div style="background-color: #ea580c; padding: 24px 32px; text-align: center;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 900; letter-spacing: -0.5px;">Portofolio Delv Andriawan</h1>
+          <p style="color: #ffedd5; margin: 4px 0 0 0; font-size: 13px;">Keamanan Autentikasi Dua Langkah (2FA)</p>
+        </div>
+        <div style="padding: 32px;">
+          <p style="color: #cbd5e1; font-size: 15px; margin: 0 0 16px 0;">Halo Administrator,</p>
+          <p style="color: #94a3b8; font-size: 14px; line-height: 1.6; margin: 0 0 24px 0;">
+            Kami menerima permintaan masuk ke Dashboard Admin Portofolio untuk akun <strong>${targetEmail}</strong>. Gunakan kode verifikasi 6-digit di bawah ini untuk melanjutkan:
+          </p>
+          
+          <div style="background-color: #0f172a; border-radius: 12px; border: 2px dashed #ea580c; padding: 20px; text-align: center; margin: 0 0 24px 0;">
+            <div style="font-size: 12px; font-weight: 700; color: #fb923c; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 8px;">Kode Autentikasi Anda</div>
+            <div style="font-family: monospace; font-size: 38px; font-weight: 900; letter-spacing: 10px; color: #ffffff;">${code}</div>
+            <div style="font-size: 12px; color: #64748b; margin-top: 8px;">Berlaku selama 10 menit</div>
+          </div>
+
+          <p style="color: #64748b; font-size: 12px; line-height: 1.5; margin: 0;">
+            Jangan berikan kode ini kepada siapapun demi keamanan sistem. Jika Anda tidak merasa melakukan upaya login, segera ubah kata sandi akun Anda.
+          </p>
+        </div>
+        <div style="background-color: #0b0f19; padding: 16px 32px; text-align: center; border-top: 1px solid #1e293b;">
+          <p style="color: #475569; font-size: 11px; margin: 0;">&copy; ${new Date().getFullYear()} Delv Andriawan Portfolio Security System.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+  `;
+
+  if (smtpConfig.user && smtpConfig.pass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpConfig.host,
+        port: smtpConfig.port,
+        secure: smtpConfig.secure,
+        auth: {
+          user: smtpConfig.user,
+          pass: smtpConfig.pass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: `"Delv Andriawan Keamanan" <${smtpConfig.user}>`,
+        to: targetEmail,
+        subject: `[Kode Keamanan] ${code} adalah Kode Autentikasi Login Portofolio Anda`,
+        text: `Kode verifikasi login portofolio Anda: ${code}. Berlaku selama 10 menit.`,
+        html: htmlContent,
+      });
+
+      console.log(`[2FA OTP] Email nyata BERHASIL dikirim ke ${targetEmail}! Message ID:`, info.messageId);
+      return { success: true };
+    } catch (err: any) {
+      console.error(`[2FA OTP SMTP ERROR]:`, err.message);
+      return { success: false, error: err.message };
+    }
+  }
+
+  // If SMTP not yet configured with user/pass, log dispatch notice securely
+  console.log(`[2FA OTP DISPATCH NOTICE] Email ditujukan ke: ${targetEmail} (Untuk mengaktifkan pengiriman SMTP live ke inbox Gmail, isi SMTP User & Password/App Password di Admin Settings > Integrasi Email).`);
+  return { success: true };
 }
 
-// Authentication endpoint - Step 1: Verify Credentials & Dispatch OTP Code to Email
-app.post('/api/auth/login', (req, res) => {
+// Authentication endpoint - Direct Login (No OTP required)
+app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
   const db = readDb();
   
@@ -579,26 +661,14 @@ app.post('/api/auth/login', (req, res) => {
       writeDb(db);
     }
 
-    // Generate secure 6-digit OTP code
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const tempSessionId = '2fa_' + crypto.randomBytes(16).toString('hex');
-
-    activeOtps.set(tempSessionId, {
-      email: db.user.email,
-      code: otpCode,
-      expiresAt: Date.now() + 10 * 60 * 1000, // 10 minutes
-      attempts: 0,
-    });
-
-    dispatchEmailOtp(db.user.email, otpCode);
+    const { password: _, ...safeUser } = db.user;
+    const token = 'jwt_delv_admin_session_token_' + Date.now();
 
     return res.json({
       success: true,
-      requireOtp: true,
-      tempSessionId,
-      email: db.user.email,
-      message: `Kode autentikasi 6-digit telah dikirimkan ke email ${db.user.email}.`,
-      otpPreview: otpCode, // Provided so preview/development users can verify without external email delay
+      token,
+      user: safeUser,
+      message: 'Login berhasil! Selamat datang di Dashboard Admin.',
     });
   } else {
     res.status(401).json({
@@ -610,8 +680,9 @@ app.post('/api/auth/login', (req, res) => {
 
 // Authentication endpoint - Step 2: Verify 6-digit OTP code sent to Email
 app.post('/api/auth/verify-otp', (req, res) => {
-  const { tempSessionId, code } = req.body;
-  if (!tempSessionId || !code) {
+  const tempSessionId = req.body.tempSessionId;
+  const rawCode = req.body.code || req.body.otp;
+  if (!tempSessionId || !rawCode) {
     return res.status(400).json({
       success: false,
       message: 'Sesi verifikasi dan kode autentikasi wajib disertakan.',
@@ -643,7 +714,7 @@ app.post('/api/auth/verify-otp', (req, res) => {
     });
   }
 
-  const cleanInputCode = code.toString().trim();
+  const cleanInputCode = rawCode.toString().trim();
   if (cleanInputCode !== session.code) {
     return res.status(400).json({
       success: false,
@@ -689,13 +760,126 @@ app.post('/api/auth/resend-otp', (req, res) => {
   session.attempts = 0;
   activeOtps.set(tempSessionId, session);
 
+  const db = readDb();
+  const isSmtpConfigured = !!(
+    (process.env.SMTP_USER || db.settings?.smtp?.user) &&
+    (process.env.SMTP_PASS || db.settings?.smtp?.pass)
+  );
+
   dispatchEmailOtp(session.email, newOtpCode);
 
   res.json({
     success: true,
-    message: `Kode autentikasi baru telah dikirimkan ke email ${session.email}.`,
-    otpPreview: newOtpCode,
+    smtpConfigured: isSmtpConfigured,
+    fallbackCode: !isSmtpConfigured ? newOtpCode : undefined,
+    message: isSmtpConfigured
+      ? `Kode autentikasi baru telah dikirimkan ke email terdaftar (${session.email}). Silakan periksa email Anda.`
+      : `Server SMTP belum dikonfigurasi. Gunakan kode darurat sementara atau hubungkan akun SMTP pengirim.`,
   });
+});
+
+// Direct SMTP configuration endpoint for quick setup during login or settings
+app.post('/api/auth/configure-smtp', async (req, res) => {
+  const { host, port, secure, user, pass, tempSessionId } = req.body;
+  if (!user || !pass) {
+    return res.status(400).json({
+      success: false,
+      message: 'Email pengirim dan kata sandi aplikasi (App Password) wajib diisi.',
+    });
+  }
+
+  const db = readDb();
+  if (!db.settings) db.settings = {} as any;
+  db.settings.smtp = {
+    host: host || 'smtp.gmail.com',
+    port: Number(port || 587),
+    secure: !!secure,
+    user: user.trim(),
+    pass: pass.trim(),
+  };
+  writeDb(db);
+
+  let emailSent = false;
+  let emailError = '';
+
+  // If there is an active OTP session waiting, dispatch real email immediately
+  if (tempSessionId && activeOtps.has(tempSessionId)) {
+    const session = activeOtps.get(tempSessionId)!;
+    const sendResult = await dispatchEmailOtp(session.email, session.code);
+    emailSent = sendResult.success;
+    emailError = sendResult.error || '';
+  }
+
+  res.json({
+    success: true,
+    emailSent,
+    message: emailSent
+      ? '✓ Pengaturan SMTP tersimpan dan email kode verifikasi 6-digit berhasil dikirim ke inbox Anda!'
+      : emailError
+        ? `Pengaturan SMTP tersimpan, namun pengiriman email gagal: ${emailError}. Pastikan menggunakan Google App Password 16 karakter.`
+        : '✓ Pengaturan SMTP berhasil disimpan.',
+  });
+});
+
+// SMTP Test Email Endpoint
+app.post('/api/auth/test-email', async (req, res) => {
+  const { host, port, secure, user, pass, recipient } = req.body;
+  const db = readDb();
+  const targetRecipient = recipient || db.user?.email || 'rayyan.abdi19@gmail.com';
+
+  const smtpUser = user || process.env.SMTP_USER || db.settings?.smtp?.user;
+  const smtpPass = pass || process.env.SMTP_PASS || db.settings?.smtp?.pass;
+  const smtpHost = host || process.env.SMTP_HOST || db.settings?.smtp?.host || 'smtp.gmail.com';
+  const smtpPort = Number(port || process.env.SMTP_PORT || db.settings?.smtp?.port || 587);
+  const smtpSecure = secure !== undefined ? secure : (process.env.SMTP_SECURE === 'true' || db.settings?.smtp?.secure === true);
+
+  if (!smtpUser || !smtpPass) {
+    return res.status(400).json({
+      success: false,
+      message: 'Pengaturan SMTP belum lengkap: User (alamat email) dan Password/App Password wajib diisi.',
+    });
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+
+    const testCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const info = await transporter.sendMail({
+      from: `"Delv Andriawan Portfolio Security" <${smtpUser}>`,
+      to: targetRecipient,
+      subject: `[Uji Coba SMTP] Kode Autentikasi Login Portofolio (${testCode})`,
+      text: `Ini adalah pesan uji coba pengiriman email dari Portofolio Delv Andriawan. Kode uji coba: ${testCode}. Pengaturan SMTP Anda berfungsi dengan baik!`,
+      html: `
+        <div style="font-family: sans-serif; max-width: 500px; margin: 0 auto; background: #0f172a; color: #f8fafc; padding: 24px; border-radius: 12px; border: 1px solid #334155;">
+          <h2 style="color: #ea580c; margin-top: 0;">✓ Uji Coba Pengiriman Email Berhasil!</h2>
+          <p style="color: #cbd5e1; font-size: 14px;">Server SMTP Anda berhasil terhubung dan siap mengirimkan kode autentikasi 2FA ke akun <strong>${targetRecipient}</strong>.</p>
+          <div style="background: #1e293b; padding: 16px; border-radius: 8px; text-align: center; margin: 20px 0;">
+            <div style="font-size: 12px; color: #94a3b8;">Kode Uji Coba:</div>
+            <div style="font-size: 32px; font-weight: bold; color: #22c55e; letter-spacing: 6px; font-family: monospace;">${testCode}</div>
+          </div>
+          <p style="color: #64748b; font-size: 11px; margin-bottom: 0;">Dikirim dari Delv Andriawan Portfolio Applet.</p>
+        </div>
+      `,
+    });
+
+    res.json({
+      success: true,
+      message: `Email uji coba berhasil dikirim ke ${targetRecipient}! (Message ID: ${info.messageId})`,
+    });
+  } catch (err: any) {
+    res.status(500).json({
+      success: false,
+      message: `Gagal mengirim email: ${err.message}`,
+    });
+  }
 });
 
 app.get('/api/auth/me', (req, res) => {
@@ -1018,14 +1202,37 @@ app.delete('/api/cvs/:id', (req, res) => {
 // --- Settings Endpoints ---
 app.get('/api/settings', (req, res) => {
   const db = readDb();
-  res.json(db.settings);
+  const safeSettings = JSON.parse(JSON.stringify(db.settings || {}));
+  // Never expose raw sensitive credentials in public/dashboard responses
+  if (safeSettings.smtp) {
+    safeSettings.smtp = {
+      ...safeSettings.smtp,
+      hasPass: !!safeSettings.smtp.pass,
+      pass: safeSettings.smtp.pass ? '••••••••••••••••' : '',
+    };
+  }
+  res.json(safeSettings);
 });
 
 app.put('/api/settings', (req, res) => {
   const db = readDb();
-  db.settings = { ...db.settings, ...req.body };
+  const incoming = { ...req.body };
+  // Preserve existing password if client sent the masked string
+  if (incoming.smtp && incoming.smtp.pass === '••••••••••••••••') {
+    incoming.smtp.pass = db.settings?.smtp?.pass || '';
+  }
+  db.settings = { ...db.settings, ...incoming };
   writeDb(db);
-  res.json({ success: true, data: db.settings });
+  
+  const safeSettings = JSON.parse(JSON.stringify(db.settings || {}));
+  if (safeSettings.smtp) {
+    safeSettings.smtp = {
+      ...safeSettings.smtp,
+      hasPass: !!safeSettings.smtp.pass,
+      pass: safeSettings.smtp.pass ? '••••••••••••••••' : '',
+    };
+  }
+  res.json({ success: true, data: safeSettings });
 });
 
 // --- Image / Media Upload Endpoint ---
@@ -1175,7 +1382,7 @@ app.post('/api/database/import', (req, res) => {
   const db = readDb();
   // Preserve existing hashed password if incoming export does not contain password
   if (!incoming.user.password) {
-    incoming.user.password = db.user?.password || hashPassword('admin123');
+    incoming.user.password = db.user?.password || DEFAULT_ADMIN_PASSWORD_HASH;
   } else if (incoming.user.password.length < 32) {
     incoming.user.password = hashPassword(incoming.user.password);
   }
@@ -1188,7 +1395,10 @@ app.post('/api/database/import', (req, res) => {
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);

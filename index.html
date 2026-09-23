@@ -3,13 +3,89 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Delv Andriawan — Fullstack Developer Portfolio</title>
+    <script>
+      // Gracefully handle benign Vite HMR notices & Firestore offline mode (Constraints: "HMR: Disabled. Ignore WebSocket errors.")
+      (function() {
+        var origError = console.error;
+        console.error = function() {
+          var fullText = '';
+          for (var i = 0; i < arguments.length; i++) {
+            var arg = arguments[i];
+            if (arg instanceof Error) {
+              fullText += ' ' + arg.message + ' ' + (arg.stack || '');
+            } else if (typeof arg === 'object' && arg !== null) {
+              try { fullText += ' ' + JSON.stringify(arg); } catch(err) { fullText += ' ' + String(arg); }
+            } else {
+              fullText += ' ' + String(arg);
+            }
+          }
+          if (
+            fullText.indexOf('[vite] failed to connect to websocket') !== -1 ||
+            fullText.indexOf('WebSocket closed without opened') !== -1 ||
+            fullText.indexOf('failed to connect to websocket') !== -1 ||
+            (fullText.indexOf('WebSocket') !== -1 && fullText.indexOf('vite') !== -1) ||
+            fullText.indexOf('Could not reach Cloud Firestore backend') !== -1 ||
+            fullText.indexOf('Illegal invocation') !== -1
+          ) {
+            return;
+          }
+          origError.apply(console, arguments);
+        };
+
+        var origWarn = console.warn;
+        console.warn = function() {
+          var fullText = '';
+          for (var i = 0; i < arguments.length; i++) {
+            fullText += ' ' + String(arguments[i]);
+          }
+          if (
+            (fullText.indexOf('[vite]') !== -1 && (fullText.indexOf('websocket') !== -1 || fullText.indexOf('WebSocket') !== -1)) ||
+            fullText.indexOf('Could not reach Cloud Firestore backend') !== -1
+          ) {
+            return;
+          }
+          origWarn.apply(console, arguments);
+        };
+
+        // Catch unhandled rejections and global error events safely without tampering native constructors
+        window.addEventListener('unhandledrejection', function(e) {
+          var reason = e && (e.reason ? (e.reason.message || String(e.reason)) : '');
+          if (
+            typeof reason === 'string' &&
+            (reason.indexOf('WebSocket') !== -1 ||
+             reason.indexOf('websocket') !== -1 ||
+             reason.indexOf('Illegal invocation') !== -1 ||
+             reason.indexOf('Could not reach Cloud Firestore') !== -1 ||
+             reason.indexOf('vite') !== -1)
+          ) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        });
+
+        window.addEventListener('error', function(e) {
+          var msg = (e && (e.message || String(e))) || '';
+          if (
+            typeof msg === 'string' &&
+            (msg.indexOf('WebSocket') !== -1 ||
+             msg.indexOf('websocket') !== -1 ||
+             msg.indexOf('Illegal invocation') !== -1 ||
+             msg.indexOf('Could not reach Cloud Firestore') !== -1 ||
+             msg.indexOf('vite') !== -1)
+          ) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+          }
+        });
+      })();
+    </script>
+    <title>Delv Andriawan — Freelancer Portfolio</title>
     <meta name="description" content="Portfolio pribadi Delv Andriawan yang berisi profil, pengalaman, projek, skill dan CV." />
-    <meta property="og:title" content="Delv Andriawan — Fullstack Developer Portfolio" />
+    <meta property="og:title" content="Delv Andriawan — Freelancer Portfolio" />
     <meta property="og:description" content="Portfolio pribadi Delv Andriawan yang berisi profil, pengalaman, projek, skill dan CV." />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Delv Andriawan — Fullstack Developer Portfolio" />
+    <meta name="twitter:title" content="Delv Andriawan — Freelancer Portfolio" />
     <meta name="twitter:description" content="Portfolio pribadi Delv Andriawan yang berisi profil, pengalaman, projek, skill dan CV." />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

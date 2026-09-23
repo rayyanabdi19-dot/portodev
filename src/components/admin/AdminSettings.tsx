@@ -16,6 +16,7 @@ import {
   Mail,
   AlertTriangle,
   RotateCcw,
+  Send,
 } from 'lucide-react';
 
 export const AdminSettings: React.FC = () => {
@@ -41,9 +42,26 @@ export const AdminSettings: React.FC = () => {
   const [newPassword, setNewPassword] = useState('');
   const [isUpdatingAccount, setIsUpdatingAccount] = useState(false);
 
+  // Email SMTP Settings State
+  const [smtpHost, setSmtpHost] = useState('smtp.gmail.com');
+  const [smtpPort, setSmtpPort] = useState(587);
+  const [smtpUser, setSmtpUser] = useState('');
+  const [smtpPass, setSmtpPass] = useState('');
+  const [smtpSecure, setSmtpSecure] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [isSavingSmtp, setIsSavingSmtp] = useState(false);
+  const [emailTestStatus, setEmailTestStatus] = useState<{ success?: boolean; message?: string } | null>(null);
+
   useEffect(() => {
     if (data?.settings) {
       setSettings(data.settings);
+      if (data.settings.smtp) {
+        setSmtpHost(data.settings.smtp.host || 'smtp.gmail.com');
+        setSmtpPort(data.settings.smtp.port || 587);
+        setSmtpUser(data.settings.smtp.user || '');
+        setSmtpPass(data.settings.smtp.pass || '');
+        setSmtpSecure(!!data.settings.smtp.secure);
+      }
     }
     if (data?.user) {
       setAdminName(data.user.name || '');
@@ -81,6 +99,58 @@ export const AdminSettings: React.FC = () => {
     if (success) {
       setCurrentPassword('');
       setNewPassword('');
+    }
+  };
+
+  const handleSaveSmtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingSmtp(true);
+    await updateSettings({
+      smtp: {
+        host: smtpHost,
+        port: Number(smtpPort),
+        user: smtpUser,
+        pass: smtpPass,
+        secure: smtpSecure,
+      },
+    });
+    setIsSavingSmtp(false);
+    showToast('success', '✓ Pengaturan email server SMTP berhasil disimpan!');
+  };
+
+  const handleTestEmail = async () => {
+    if (!smtpUser || !smtpPass) {
+      showToast('error', 'Masukkan Email Akun Pengirim dan Password / App Password sebelum menguji.');
+      return;
+    }
+    setIsTestingEmail(true);
+    setEmailTestStatus(null);
+    try {
+      const res = await fetch('/api/auth/test-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          host: smtpHost,
+          port: smtpPort,
+          secure: smtpSecure,
+          user: smtpUser,
+          pass: smtpPass,
+          recipient: adminEmail || 'rayyan.abdi19@gmail.com',
+        }),
+      });
+      const result = await res.json();
+      setEmailTestStatus(result);
+      if (result.success) {
+        showToast('success', result.message || 'Email uji coba berhasil dikirim!');
+      } else {
+        showToast('error', result.message || 'Pengiriman email uji coba gagal.');
+      }
+    } catch (err: any) {
+      const msg = err?.message || 'Gagal menghubungi server.';
+      setEmailTestStatus({ success: false, message: msg });
+      showToast('error', msg);
+    } finally {
+      setIsTestingEmail(false);
     }
   };
 
@@ -330,6 +400,140 @@ export const AdminSettings: React.FC = () => {
             >
               <Lock className="w-4 h-4 text-orange-400" />
               <span>{isUpdatingAccount ? 'Memperbarui...' : 'Simpan Kredensial Akun'}</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Real Email Server (SMTP & 2FA OTP) Integration Card */}
+      <div className="bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-2xs space-y-6">
+        <form onSubmit={handleSaveSmtp} className="space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-slate-900">Integrasi Server Email (SMTP & Pengiriman OTP Nyata)</h3>
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-orange-500/10 text-orange-600 border border-orange-500/20">
+                  Pengiriman Langsung ke Inbox
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Konfigurasi akun pengirim email untuk mengirimkan 6-digit kode verifikasi 2FA langsung ke email Anda (<strong>{adminEmail || 'rayyan.abdi19@gmail.com'}</strong>).
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 text-xs text-slate-600 space-y-1.5">
+            <p className="font-bold text-slate-800 flex items-center gap-1.5">
+              <Mail className="w-4 h-4 text-orange-500" />
+              <span>Panduan Akun Gmail (Rekomendasi Google):</span>
+            </p>
+            <p className="text-[11px] leading-relaxed text-slate-600">
+              Jika menggunakan Gmail, gunakan <strong>Sandi Aplikasi (App Password)</strong> 16-karakter dari Akun Google Anda:
+              <br />
+              1. Buka <em>myaccount.google.com</em> &rarr; <em>Keamanan (Security)</em> &rarr; Aktifkan <em>Verifikasi 2 Langkah</em>.
+              <br />
+              2. Buat <em>Sandi Aplikasi (App Password)</em> baru dan tempelkan 16 karakter password tersebut pada kolom kata sandi di bawah.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                SMTP Server Host *
+              </label>
+              <input
+                type="text"
+                required
+                value={smtpHost}
+                onChange={(e) => setSmtpHost(e.target.value)}
+                placeholder="smtp.gmail.com"
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-hidden focus:border-orange-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                SMTP Port *
+              </label>
+              <input
+                type="number"
+                required
+                value={smtpPort}
+                onChange={(e) => setSmtpPort(Number(e.target.value))}
+                placeholder="587"
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-hidden focus:border-orange-500 font-mono"
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                Email Pengirim (SMTP User) *
+              </label>
+              <input
+                type="email"
+                value={smtpUser}
+                onChange={(e) => setSmtpUser(e.target.value)}
+                placeholder="contoh@gmail.com"
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-hidden focus:border-orange-500"
+              />
+            </div>
+
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                Kata Sandi SMTP / App Password Google (16 Karakter) *
+              </label>
+              <input
+                type="password"
+                value={smtpPass}
+                onChange={(e) => setSmtpPass(e.target.value)}
+                placeholder="xxxx xxxx xxxx xxxx"
+                className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-hidden focus:border-orange-500 font-mono"
+              />
+            </div>
+
+            <div className="flex items-center pt-6">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={smtpSecure}
+                  onChange={(e) => setSmtpSecure(e.target.checked)}
+                  className="rounded text-orange-500 focus:ring-orange-500"
+                />
+                <span>Gunakan Koneksi SSL/TLS (Port 465)</span>
+              </label>
+            </div>
+          </div>
+
+          {emailTestStatus && (
+            <div
+              className={`p-3.5 rounded-xl text-xs font-medium border ${
+                emailTestStatus.success
+                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700'
+                  : 'bg-rose-500/10 border-rose-500/30 text-rose-700'
+              }`}
+            >
+              {emailTestStatus.message}
+            </div>
+          )}
+
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-100">
+            <button
+              type="button"
+              onClick={handleTestEmail}
+              disabled={isTestingEmail || !smtpUser || !smtpPass}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-orange-50 hover:bg-orange-100 text-orange-700 font-bold text-xs border border-orange-200 transition-colors disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>{isTestingEmail ? 'Mengirim Email Uji Coba...' : `Kirim Email Uji Coba ke ${adminEmail || 'Admin'}`}</span>
+            </button>
+
+            <button
+              type="submit"
+              disabled={isSavingSmtp}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-all disabled:opacity-50"
+            >
+              <Save className="w-4 h-4 text-orange-400" />
+              <span>{isSavingSmtp ? 'Menyimpan...' : 'Simpan Pengaturan Server Email'}</span>
             </button>
           </div>
         </form>

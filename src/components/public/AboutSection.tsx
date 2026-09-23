@@ -20,7 +20,7 @@ export const AboutSection: React.FC = () => {
   const profile = data?.profile;
 
   const highlights = [
-    { title: 'Fullstack Mastery', desc: 'Pengembangan end-to-end dari perancangan database relasional, REST API, hingga UI modern yang reaktif.' },
+    { title: 'Solusi Digital End-to-End', desc: 'Layanan freelance komprehensif mulai dari perancangan database, integrasi REST API, hingga UI web modern yang responsif.' },
     { title: 'Vibe Coding & AI', desc: 'Memanfaatkan tooling AI terkini untuk akselerasi prototyping, refactoring, dan deployment fitur tanpa kompromi kualitas.' },
     { title: 'Pragmatic & Clean Code', desc: 'Menulis kode yang mudah dirawat (maintainable), terdokumentasi rapi, dan teruji performanya di lingkungan produksi.' },
   ];
@@ -59,7 +59,7 @@ export const AboutSection: React.FC = () => {
                   {profile?.name || 'Delv Andriawan'}
                 </h3>
                 <p className="text-xs font-semibold text-orange-600 mt-0.5">
-                  {profile?.title || 'Fullstack Developer'}
+                  {profile?.title || 'Freelancer'}
                 </p>
                 <div className="flex items-center gap-1.5 text-xs text-slate-500 mt-1">
                   <MapPin className="w-3.5 h-3.5 text-slate-400" />
@@ -180,7 +180,7 @@ export const AboutSection: React.FC = () => {
               </h3>
               <p className="mt-4 text-slate-600 text-base leading-relaxed">
                 {profile?.bio ||
-                  'Halo! Saya Delv Andriawan, seorang Fullstack Developer yang berfokus pada pembangunan solusi digital yang efektif, terukur, dan berkinerja tinggi.'}
+                  'Halo! Saya Delv Andriawan, seorang Freelancer yang berfokus pada pembangunan solusi digital yang efektif, terukur, dan berkinerja tinggi.'}
               </p>
               <p className="mt-3 text-slate-600 text-base leading-relaxed">
                 Dengan pengalaman di bidang rekayasa web frontend dan backend, saya biasa menangani siklus hidup aplikasi secara menyeluruh — mulai dari analisis kebutuhan sistem, pembuatan antarmuka di React atau Tailwind, hingga integrasi database relasional MySQL/PostgreSQL dan REST API di Node.js atau Laravel.

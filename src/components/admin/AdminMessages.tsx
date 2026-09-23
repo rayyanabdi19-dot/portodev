@@ -59,7 +59,7 @@ export const AdminMessages: React.FC = () => {
     const mailto = `mailto:${msg.email}?subject=${encodeURIComponent(
       'Re: ' + (msg.subject || 'Diskusi Projek')
     )}`;
-    window.open(mailto, '_blank');
+    window.location.href = mailto;
   };
 
   const handleReplyWhatsApp = (msg: ContactMessage) => {
@@ -72,7 +72,11 @@ export const AdminMessages: React.FC = () => {
     const text = encodeURIComponent(
       `Halo ${msg.name}, terima kasih telah menghubungi Delv Andriawan mengenai "${msg.subject || 'projek web'}".`
     );
-    window.open(`https://wa.me/${intlPhone}?text=${text}`, '_blank');
+    const link = document.createElement('a');
+    link.href = `https://wa.me/${intlPhone}?text=${text}`;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.click();
   };
 
   return (

@@ -220,6 +220,13 @@ export interface Settings {
     meta_description: string;
     og_image?: string;
   };
+  smtp?: {
+    host?: string;
+    port?: number;
+    user?: string;
+    pass?: string;
+    secure?: boolean;
+  };
 }
 
 export interface ContactMessage {

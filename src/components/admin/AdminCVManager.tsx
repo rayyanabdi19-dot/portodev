@@ -370,7 +370,7 @@ export const AdminCVManager: React.FC = () => {
               rows={4}
               value={formData.summary || ''}
               onChange={handleChange}
-              placeholder="Fullstack Developer dengan pengalaman 4+ tahun..."
+              placeholder="Freelancer dengan keahlian web development dan digital solutions..."
               className="w-full px-3.5 py-2.5 rounded-xl text-xs bg-slate-50 border border-slate-200 focus:outline-hidden focus:border-orange-500"
             />
           </div>
