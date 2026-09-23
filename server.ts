@@ -6,7 +6,7 @@ import nodemailer from 'nodemailer';
 import { createServer as createViteServer } from 'vite';
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 app.use(express.json({ limit: '20mb' }));
 app.use(express.urlencoded({ extended: true, limit: '20mb' }));
@@ -14,6 +14,13 @@ app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 const DATA_DIR = path.join(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'portfolio-db.json');
 const UPLOADS_DIR = path.join(process.cwd(), 'public', 'uploads');
+
+try {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+} catch {
+  // Ignore directory creation if already exists
+}
 
 app.use('/uploads', express.static(UPLOADS_DIR));
 
