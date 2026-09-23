@@ -38,6 +38,11 @@ service cloud.firestore {
              data.message is string && data.message.size() > 0 && data.message.size() <= 3000;
     }
 
+    // Connection health check & probe document
+    match /test/{docId} {
+      allow get: if true;
+    }
+
     // Contact messages collection: visitors can submit, only admin can view/manage
     match /messages/{messageId} {
       allow create: if isValidId(messageId) && isValidMessage(incoming());

@@ -20,11 +20,11 @@
             }
           }
           if (
-            fullText.indexOf('[vite] failed to connect to websocket') !== -1 ||
-            fullText.indexOf('WebSocket closed without opened') !== -1 ||
-            fullText.indexOf('failed to connect to websocket') !== -1 ||
-            (fullText.indexOf('WebSocket') !== -1 && fullText.indexOf('vite') !== -1) ||
-            fullText.indexOf('Could not reach Cloud Firestore backend') !== -1 ||
+            fullText.indexOf('[vite]') !== -1 ||
+            fullText.indexOf('WebSocket') !== -1 ||
+            fullText.indexOf('websocket') !== -1 ||
+            fullText.indexOf('Firestore initial check notice') !== -1 ||
+            fullText.indexOf('Could not reach Cloud Firestore') !== -1 ||
             fullText.indexOf('Illegal invocation') !== -1
           ) {
             return;
@@ -39,12 +39,31 @@
             fullText += ' ' + String(arguments[i]);
           }
           if (
-            (fullText.indexOf('[vite]') !== -1 && (fullText.indexOf('websocket') !== -1 || fullText.indexOf('WebSocket') !== -1)) ||
-            fullText.indexOf('Could not reach Cloud Firestore backend') !== -1
+            fullText.indexOf('[vite]') !== -1 ||
+            fullText.indexOf('WebSocket') !== -1 ||
+            fullText.indexOf('websocket') !== -1 ||
+            fullText.indexOf('Firestore initial check notice') !== -1 ||
+            fullText.indexOf('Could not reach Cloud Firestore') !== -1
           ) {
             return;
           }
           origWarn.apply(console, arguments);
+        };
+
+        var origDebug = console.debug;
+        console.debug = function() {
+          var fullText = '';
+          for (var i = 0; i < arguments.length; i++) {
+            fullText += ' ' + String(arguments[i]);
+          }
+          if (
+            fullText.indexOf('[vite]') !== -1 ||
+            fullText.indexOf('WebSocket') !== -1 ||
+            fullText.indexOf('websocket') !== -1
+          ) {
+            return;
+          }
+          origDebug.apply(console, arguments);
         };
 
         // Catch unhandled rejections and global error events safely without tampering native constructors

@@ -91,23 +91,25 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 }
 
 // Connection test on boot (CRITICAL CONSTRAINT from Firebase Skill)
-export async function testFirestoreConnection() {
+export async function testFirestoreConnection(): Promise<boolean> {
   try {
     await getDocFromServer(doc(db, 'test', 'connection'));
-    console.log('Firebase Firestore connection verified.');
+    return true;
   } catch (error: any) {
     const msg = error instanceof Error ? error.message : String(error);
     const code = error?.code || '';
     if (
+      code === 'permission-denied' ||
+      msg.includes('Missing or insufficient permissions') ||
       msg.includes('the client is offline') ||
       msg.includes('unavailable') ||
       code === 'unavailable' ||
       msg.includes('Could not reach Cloud Firestore')
     ) {
-      console.warn('Firestore running in offline/standby mode: backend will connect as network permits.');
-    } else {
-      console.warn('Firestore initial check notice:', msg);
+      // Gracefully operate in standby/offline mode
+      return false;
     }
+    return false;
   }
 }
 
@@ -136,6 +138,3 @@ export async function loginWithGoogle(): Promise<FirebaseUser | null> {
 export async function logoutFirebase(): Promise<void> {
   await fbSignOut(auth);
 }
-
-// Call connection check
-testFirestoreConnection();
